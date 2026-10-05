@@ -2,7 +2,7 @@
 -- BanditSpawner.lua
 -- Per-player F10 radio command that spawns a bandit group N nautical miles
 -- directly ahead of the clicking player's aircraft, pointed back at the player,
--- at a randomized altitude / speed around configurable defaults.
+-- at a randomized speed around configurable defaults, with distance and altitude taken from the menu tiers.
 --
 -- Two spawn modes per radio item (mix and match in cfg.spawns):
 --   mode = "clone" : duplicates a LATE ACTIVATION group placed in the ME
@@ -22,6 +22,11 @@
 -- distance_nm -- the bandits spawn on that bearing FROM the reference point,
 -- that far out, and fly inbound. Every client in MP gets the same menu and
 -- the same fixed AO geometry, instead of 'ahead of whoever clicked'.
+--
+-- MENU TIERS: cfg.spawn_distances_nm / bearing_modes / altitude_modes drive the
+-- nested distance -> bearing -> altitude radio picks. Set a tier to nil or {}
+-- to skip it (flat menu); geometry then falls back to per-entry overrides or
+-- the built-in defaults (10 nm; 10,000 ft +/- 2,000 ft).
 --
 -- INSTALL:
 --   Mission Editor -> Triggers -> ONCE (time more 0) -> DO SCRIPT FILE ->
@@ -58,13 +63,11 @@ local ROEMap = {
 --=============================================================================
 BanditSpawner.cfg = {
 
-  -- spawn geometry (all can be overridden per-entry in cfg.spawns)
-  distance_nm         = 10,     -- how far in front of the player
+  -- spawn geometry (distance comes from the menu tiers; jitter can be overridden per-entry in cfg.spawns)
   bearing_jitter_deg  = 0,      -- random +/- jitter on spawn bearing (0 = dead ahead)
 
-  -- randomized flight parameters (can be overridden per-entry in cfg.spawns)
-  alt_ft              = 10000,  -- default altitude, feet MSL
-  alt_var_ft          = 2000,   -- random +/- around alt_ft
+  -- randomized flight parameters (altitude comes from the altitude menu tier or co-altitude;
+  -- the values below can still be overridden per-entry in cfg.spawns)
   min_alt_agl_ft      = 1000,   -- floor: never spawn lower than this above terrain
   speed_kts           = 450,    -- default speed, knots
   speed_var_kts       = 75,     -- random +/- around speed_kts
@@ -107,7 +110,7 @@ BanditSpawner.cfg = {
   -- nil or empty table = menu available to every player group.
   player_groups       = nil,    -- e.g. { "Viper-1", "Hornet-1" }
 
-  -- nested menu distances (nautical miles). nil or empty = flat menu.
+  -- nested menu distances (nautical miles). nil or empty = flat menu (per-entry distance_nm, else the built-in 10 nm fallback).
   -- a plain number = exact distance; a table = randomized range:
   --   { label = "...", dist_nm = mid, dist_var_nm = half-range }
   spawn_distances_nm  = {
@@ -126,7 +129,7 @@ BanditSpawner.cfg = {
     { label = "Offset Away",   spawn_offset_deg = 45,  heading_offset_deg = 45,  randomize_sign = true },
   },
 
-  -- nested menu altitude blocks (feet MSL). nil or empty = classic randomized band.
+  -- nested menu altitude blocks (feet MSL). nil or empty = per-entry alt_ft/alt_var_ft, else the built-in 10,000 +/- 2,000 ft band.
   -- co_altitude = true matches the requesting player's current altitude; the other
   -- entries randomize inside the block: alt_ft +/- alt_var_ft.
   altitude_modes = {
@@ -259,6 +262,9 @@ local C = {
   MAX_GROUP_SIZE                = 8,        -- build-mode aircraft cap
   DEFAULT_BUILD_COUNT           = 2,
   MIN_VELOCITY_FOR_HEADING_MS   = 2,        -- velocity fallback threshold for heading
+  DEFAULT_DISTANCE_NM           = 10,       -- flat-menu fallback (menus own distance now)
+  DEFAULT_ALT_FT                = 10000,    -- flat-menu fallback altitude, feet MSL
+  DEFAULT_ALT_VAR_FT            = 2000,     -- random +/- around the fallback altitude
 }
 FTS.Constants = C
 
@@ -477,8 +483,8 @@ function Geo.randAltSpeed(def, sx, sz, ctx)
   if am and am.co_altitude and ctx.player_alt_ft then
     alt = ctx.player_alt_ft * FT2M               -- match the requesting player
   else
-    local base = U.cfgVal(def, "alt_ft", ctx)
-    local var  = U.cfgVal(def, "alt_var_ft", ctx)
+    local base = U.cfgVal(def, "alt_ft", ctx) or C.DEFAULT_ALT_FT
+    local var  = U.cfgVal(def, "alt_var_ft", ctx) or C.DEFAULT_ALT_VAR_FT
     if am and am.alt_ft then                     -- fixed block picked from the menu
       base = am.alt_ft
       var  = am.alt_var_ft or 0
@@ -501,7 +507,6 @@ function Geo.buildGeo(sx, sz, inboundX, inboundZ, def, ctx)
   return {
     x = sx, z = sz, alt = alt, speed = spd,
     heading = math.atan2(inboundZ - sz, inboundX - sx),
-    dist_nm = U.cfgVal(def, "distance_nm", ctx),
     bearing_label = bearingLabel,
   }
 end
@@ -510,7 +515,7 @@ end
 function Geo.computeSpawnGeometry(playerUnit, def, ctx)
   local pos  = playerUnit:getPosition().p          -- x = north, y = alt, z = east
   local hdg  = Util.getUnitHeading(playerUnit)
-  local distNm = U.randRange(U.cfgVal(def, "distance_nm", ctx), U.cfgVal(def, "distance_var_nm", ctx) or 0)
+  local distNm = U.randRange(U.cfgVal(def, "distance_nm", ctx) or C.DEFAULT_DISTANCE_NM, U.cfgVal(def, "distance_var_nm", ctx) or 0)
   local dist   = distNm * NM2M
   local mode = ctx and ctx.bearing_mode
   local sx, sz, banditHeading
@@ -554,7 +559,7 @@ end
 function Geo.computeAOGeometry(def, ctx)
   local rx, rz = Geo.getAOReference(def)
   if not rx then return nil end
-  local distNm = U.randRange(U.cfgVal(def, "distance_nm", ctx), U.cfgVal(def, "distance_var_nm", ctx) or 0)
+  local distNm = U.randRange(U.cfgVal(def, "distance_nm", ctx) or C.DEFAULT_DISTANCE_NM, U.cfgVal(def, "distance_var_nm", ctx) or 0)
   local dist   = distNm * NM2M
   local brg  = math.rad(def.bearing_deg or 0)
            + U.randRange(0, math.rad(U.cfgVal(def, "bearing_jitter_deg", ctx)))

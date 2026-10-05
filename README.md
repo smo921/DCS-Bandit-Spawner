@@ -10,7 +10,7 @@ The radio menu grows a **Bandit Spawner**:
 
 A single-file mission script for [DCS World](https://www.digitalcombatsimulations.com/) that gives every player a personal **F10 radio menu** for spawning AI bandits (hostile aircraft) on demand.
 
-Each player can click a menu item and a bandit group spawns **N nautical miles directly ahead of their aircraft**, pointed back at them, at a randomized altitude/speed around configurable defaults — ready to fight. Bandits automatically join the **coalition opposite the clicking player**, carry an *Engage Air* task, and are forbidden from using afterburner (configurable).
+Each player can click a menu item and a bandit group spawns **N nautical miles directly ahead of their aircraft**, pointed back at them, at a randomized speed, with the distance and altitude band picked from the radio menus — ready to fight. Bandits automatically join the **coalition opposite the clicking player**, carry an *Engage Air* task, and are forbidden from using afterburner (configurable).
 
 
 
@@ -220,7 +220,7 @@ F10 / Bandit Spawner
     └── Remove all spawned bandits
 ```
 
-- The **distance / bearing / altitude tiers** are optional; nil or empty tables produce a flat list. If altitude modes are omitted, the nesting stops at bearing mode.
+- The **distance / bearing / altitude tiers** are optional; nil or empty tables produce a flat list (geometry falls back to per-entry overrides or the built-in defaults — see Configuration Reference). If altitude modes are omitted, the nesting stops at bearing mode.
 - DCS radio pages have only **10 usable slots** (F1–F10; F11/F12 are paging rows), so the script automatically splits bandits and AO entries onto separate pages, and warns at load time if any configured page would overflow.
 - Restrict the menu to specific player groups with `cfg.player_groups = { "Viper-1", "Hornet-1" }` (exact group names; nil/empty = everyone).
 
@@ -243,14 +243,13 @@ Everything lives in the `BanditSpawner.cfg` table at the top of the file. Resolu
 
 | Key | Default | Description |
 |---|---|---|
-| `distance_nm` | `10` | How far in front of the player bandits spawn |
 | `bearing_jitter_deg` | `0` | Random ± jitter on the spawn bearing (0 = dead ahead) |
-| `alt_ft` | `10000` | Default altitude, feet MSL |
-| `alt_var_ft` | `2000` | Random ± around `alt_ft` |
 | `min_alt_agl_ft` | `1000` | Floor — never spawn lower than this above terrain |
 | `speed_kts` | `450` | Default speed, knots |
 | `speed_var_kts` | `75` | Random ± around `speed_kts` (never slower than ~115 kts) |
 | `skill` | `"High"` | AI skill in build mode: `Average`, `Good`, `High`, `Excellent`, `Ace` (case-insensitive; invalid values fall back to `High` with a log warning) |
+
+Distance and altitude are **not** global knobs — they come from the radio-menu tiers (`spawn_distances_nm` / `altitude_modes`). Per-entry `distance_nm` / `alt_ft` / `alt_var_ft` overrides still apply, and if the menu tiers are disabled the built-in fallbacks kick in (10 nm; 10,000 ft ± 2,000 ft).
 
 ### Behavior options
 
@@ -339,7 +338,7 @@ Each entry in `cfg.spawns` becomes one (or one tree of) radio item(s). Common fi
 | `payload_from` | both | Donor group name, or per-type table — see [Donor Groups](#loadouts--donor-groups-no-clsids) |
 | `ao` | both | Trigger-zone name or `{ x = ..., z = ... }` — enables AO mode |
 | `bearing_deg`, `distance_nm` | AO | Spawn geometry relative to the AO reference |
-| `distance_nm`, `distance_var_nm`, `bearing_jitter_deg`, `alt_ft`, `alt_var_ft`, `speed_kts`, `speed_var_kts` | both | Optional per-entry overrides of the globals |
+| `distance_nm`, `distance_var_nm`, `bearing_jitter_deg`, `alt_ft`, `alt_var_ft`, `speed_kts`, `speed_var_kts` | both | Optional per-entry overrides (distance/altitude fall back to the built-in defaults when unset) |
 
 Entries are validated at load time (`dcs.log`) for missing/invalid `mode`, `template`, `airframe`, `count`, and `payload_from` shapes.
 
