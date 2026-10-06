@@ -32,17 +32,14 @@
 --   Mission Editor -> Triggers -> ONCE (time more 0) -> DO SCRIPT FILE ->
 --   select this file. (Or paste the whole file into a DO SCRIPT action.)
 --
--- LOADOUTS: build them visually in the ME on "donor" groups (see below) and
--- reference them with payload_from on the spawn def -- no CLSIDs anywhere.
--- Without payload_from, build-mode aircraft spawn with clean pylons (internal
--- fuel + 100% gun ammo) and clones keep whatever payload their ME template
--- carries.
---
--- ALTERNATIVE WITHOUT CLSIDs (recommended): "donor" groups. Place a 1-plane
--- late-activation group in the ME with the loadout built visually in the
--- editor payload window (clean = guns only, Sidewinders only = IR+guns,
--- full AA + tanks = radar+IR+guns+tanks, ...) and set payload_from =
--- "DONOR GROUP NAME" on the spawn def. The pylon table is copied at runtime.
+-- LOADOUTS: bandits with custom loadouts are designed as late-activation
+-- groups in the Mission Editor. Place a 1-plane late-activation "donor" group
+-- with the loadout built visually in the editor payload window (clean = guns
+-- only, Sidewinders only = IR+guns, full AA + tanks = radar+IR+guns+tanks,
+-- ...) and set payload_from = "DONOR GROUP NAME" on the spawn def; the pylon
+-- table is copied at runtime. Without payload_from, build-mode aircraft spawn
+-- with clean pylons (internal fuel + 100% gun ammo) and clones keep whatever
+-- payload their ME template carries.
 --------------------------------------------------------------------------------
 
 BanditSpawner = {}
@@ -138,7 +135,7 @@ BanditSpawner.cfg = {
     { label = "12-20k ft", alt_ft = 16000, alt_var_ft = 4000 },
   },
 
-  -- (no CLSID tables needed: loadouts come from donor groups via payload_from,
+  -- (loadouts come from donor groups via payload_from;
   --  see the examples in cfg.spawns below)
 
   -- true = strip cloned template aircraft to clean pylons + full gun.
@@ -155,7 +152,7 @@ BanditSpawner.cfg = {
       mode     = "clone",
       template = "BANDIT-TPL",   -- exact group name of a LATE ACTIVATION group in the ME
       -- NOTE: the template group's own task is ignored -- spawned clones get cfg.task
-      -- (default "CAP"), or a per-entry task = "..." override.
+      -- (default "Intercept"), or a per-entry task = "..." override.
     },
     {
       label    = "1x MiG-21 (guns only)",
@@ -193,7 +190,7 @@ BanditSpawner.cfg = {
       bearing_deg = 90,           -- spawn east of the point, run westbound in
       distance_nm = 25,
     },
-    -- GENERIC LOADOUTS VIA "DONOR" GROUPS (no CLSIDs): place 1-plane late-
+    -- GENERIC LOADOUTS VIA "DONOR" GROUPS: place 1-plane late-
     -- activation groups in the ME with the loadout built in the editor payload
     -- window, then point payload_from at the donor's group name. For mixed-type
     -- clone groups it can also be a table: payload_from = { ["F-5E-3"] = "DONOR A", ... }

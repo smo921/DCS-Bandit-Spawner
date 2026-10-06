@@ -10,9 +10,7 @@ The radio menu grows a **Bandit Spawner**:
 
 A single-file mission script for [DCS World](https://www.digitalcombatsimulations.com/) that gives every player a personal **F10 radio menu** for spawning AI bandits (hostile aircraft) on demand.
 
-Each player can click a menu item and a bandit group spawns **N nautical miles directly ahead of their aircraft**, pointed back at them, at a randomized speed, with the distance and altitude band picked from the radio menus — ready to fight. Bandits automatically join the **coalition opposite the clicking player**, carry an *Engage Air* task, and are forbidden from using afterburner (configurable).
-
-
+Each player can click a menu item and a bandit group spawns **N nautical miles directly ahead of their aircraft**, with the distance and altitude picked from the radio menus. Bandits automatically carry an *Engage Air* task, and are forbidden from using afterburner (configurable).
 
 ---
 
@@ -24,7 +22,7 @@ Each player can click a menu item and a bandit group spawns **N nautical miles d
   - [Clone mode](#clone-mode)
   - [Build mode](#build-mode)
   - [Clone vs. build — what actually differs](#clone-vs-build--what-actually-differs)
-- [Loadouts & Donor Groups (no CLSIDs)](#loadouts--donor-groups-no-clsids)
+- [Loadouts & Donor Groups](#loadouts--donor-groups)
 - [AO Mode (map-referenced spawns)](#ao-mode-map-referenced-spawns)
 - [The Radio Menu](#the-radio-menu)
 - [Configuration Reference](#configuration-reference)
@@ -55,16 +53,14 @@ The script needs no other files, no MIST, no Moose — it is fully self-containe
 
 ---
 
-## Quick Start
+## Quick start
 
-The script works out of the box with the default config. For the stock experience:
+- Place a late-activation group named `BANDIT-TPL` in the Mission Editor (give it the payload, skill, and liveries you want).
+- Load the script (see [Installation](#installation)).
+- In-flight, open **F10 → Bandit Spawner** and pick a spawn option.
+- Bandits appear in front of you, hot, and attack your coalition.
 
-1. Place a **late-activation** aircraft group in the ME named `BANDIT-TPL` (give it the payload, skill, and liveries you want).
-2. Load the script (see [Installation](#installation)).
-3. In-flight, open **F10 → Bandit Spawner** and pick a spawn option.
-4. Bandits appear in front of you, hot, and attack your coalition.
-
-To customize what spawns, edit the `cfg` table near the top of the file (everything above the `INTERNALS` banner). You should never need to touch the code below it.
+**Tip**: To customize what spawns, edit the `cfg` table near the top of the file (everything above the `INTERNALS` banner). You should never need to touch the code below it.
 
 ---
 
@@ -88,7 +84,7 @@ Duplicates a **late-activation** group you placed in the Mission Editor. The clo
 - Liveries
 - Callsigns
 - Skill (as set on the template in the ME)
-- Payload — *unless* you use `payload_from` or set `override_clone_payload = true`
+- Payload — *unless* you set `override_clone_payload = true` or point the entry at a [donor group](#loadouts--donor-groups)
 
 > **Note:** the template group's own *task* is ignored — spawned clones always get `cfg.task` (default `"Intercept"`), or a per-entry `task = "..."` override.
 
@@ -106,7 +102,7 @@ Clone mode is the easiest way to get fully-kitted bandits (external tanks, missi
 }
 ```
 
-Spawns a fresh group of the chosen airframe and count (1–8 aircraft, vic-ish formation). Without a `payload_from`, build-mode aircraft spawn **clean**: empty pylons, internal fuel, 100% gun ammo, no missiles.
+Spawns a fresh group of the chosen airframe and count (1–8 aircraft, vic-ish formation). Build-mode aircraft spawn **clean**: empty pylons, internal fuel, 100% gun ammo, no missiles — to give them a real loadout, point the entry at a [donor group](#loadouts--donor-groups).
 
 > ⚠️ **Airframe names must match your mission file exactly.** DCS renames types between builds (e.g. `F-16C_50` became `F-16C bl.50`). A wrong string makes DCS *silently substitute a different aircraft* — this script detects the substitution and warns you on-screen and in `dcs.log`. To find the exact string: open the `.miz` as a zip, read `unit.type` in the `mission` file. (The old `F-16C_50` spelling still spawns via an alias, but donor matching follows the mission file name.)
 
@@ -120,7 +116,7 @@ Both modes share everything downstream — spawn geometry, route & tasks, AI opt
 | Count | Whatever the template has (no cap) | Clamped to 1–8 (default 2) |
 | Skill | Per-unit, from the template in the ME | `cfg.skill` / per-entry `skill` (falls back to `"High"` on typos) |
 | Default payload | The template's ME payload | Clean pylons + 100% gun |
-| `payload_from` fails | Falls back to template payload | Falls back to clean |
+| Donor payload fails | Falls back to template payload | Falls back to clean |
 | Liveries, callsigns, unit props | Preserved from the template | Generated defaults |
 | Wrong type string | Not possible — types come from the mission | DCS silently spawns a different jet; the script detects it and warns |
 | Failure mode | Spawn aborted, on-screen + log message | Usually still spawns, with warnings |
@@ -129,9 +125,9 @@ Both modes share everything downstream — spawn geometry, route & tasks, AI opt
 
 ---
 
-## Loadouts & Donor Groups (no CLSIDs)
+## Loadouts & Donor Groups
 
-You never need to handle raw CLSID pylon tables. Build loadouts **visually in the ME** using *donor groups*:
+Bandits with custom loadouts can be designed as **late-activation groups in the Mission Editor**:
 
 1. Place a **1-plane late-activation group** in the ME (e.g. `DONOR F16 IR`).
 2. Open its payload window in the editor and build the loadout you want
@@ -279,9 +275,11 @@ Distance and altitude are **not** global knobs — they come from the radio-menu
 
 ### Menu customization
 
-**`menu_name`** (default `"Bandit Spawner"`) — root menu label. The control menu appends `" Control"`.
-
-**`player_groups`** (default `nil`) — restrict the menu to exact player group names, e.g. `{ "Viper-1", "Hornet-1" }`. `nil` or empty = available to every player group.
+| Key | Default | Description |
+|---|---|---|
+| `menu_name` | `"Bandit Spawner"` | Root menu label. The control menu appends `" Control"`. |
+| `player_groups` | `nil` | Restrict the menu to exact player group names, e.g. `{ "Viper-1", "Hornet-1" }`. `nil` or empty = every player group. |
+| `override_clone_payload` | `false` | `true` strips cloned template aircraft to clean pylons + full gun. |
 
 **`spawn_distances_nm`** — nested menu distances. `nil`/empty = flat menu.
 
@@ -319,8 +317,6 @@ altitude_modes = {
 },
 ```
 
-**`override_clone_payload`** (default `false`) — `true` strips cloned template aircraft to clean pylons + full gun.
-
 ### `spawns` entries
 
 Each entry in `cfg.spawns` becomes one (or one tree of) radio item(s). Common fields:
@@ -335,7 +331,7 @@ Each entry in `cfg.spawns` becomes one (or one tree of) radio item(s). Common fi
 | `skill` | build | Optional skill override |
 | `task` | both | Optional group-task override (drones force `"Nothing"` unless you set this) |
 | `behavior` | both | `"Intercept"` (default) or `"Drone"` |
-| `payload_from` | both | Donor group name, or per-type table — see [Donor Groups](#loadouts--donor-groups-no-clsids) |
+| `payload_from` | both | Donor group name, or per-type table — see [Donor Groups](#loadouts--donor-groups) |
 | `ao` | both | Trigger-zone name or `{ x = ..., z = ... }` — enables AO mode |
 | `bearing_deg`, `distance_nm` | AO | Spawn geometry relative to the AO reference |
 | `distance_nm`, `distance_var_nm`, `bearing_jitter_deg`, `alt_ft`, `alt_var_ft`, `speed_kts`, `speed_var_kts` | both | Optional per-entry overrides (distance/altitude fall back to the built-in defaults when unset) |
